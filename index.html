@@ -56,7 +56,9 @@
   .map-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 10px; }
   .map-container { position: relative; display:block; line-height:0; border-radius: 9px; overflow:hidden; }
   .map-container img { display:block; width:100%; height:auto; }
-  .cell { position:absolute; border-radius: 2px; }
+  /* グリッド1マス分そのままだと画面上で数px四方しかなく指では正確にタップできないため、
+     見た目の位置(中心)は変えずに当たり判定だけ拡大する */
+  .cell { position:absolute; border-radius: 2px; transform: scale(3.2); -webkit-tap-highlight-color: var(--accent-soft); }
   .cell:hover, .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--accent-soft); }
   .hint { font-size: 0.85rem; color: var(--text-muted); margin:0; }
   .sources { display:flex; flex-direction:column; gap:10px; }
