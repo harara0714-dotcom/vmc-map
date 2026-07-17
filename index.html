@@ -113,13 +113,20 @@
   var lonMin = 122.0, lonMax = 146.0;
   var latMin = 24.0, latMax = 46.0;
   var maxDist = 0.3 * 0.8;
+  // 画像全体(タイトル・軸ラベル・凡例込み)のうち、実際の地図プロットが占める割合
+  var axLeft = 0.075500, axRight = 0.985000;
+  var axTop = 0.121042, axBottom = 0.878958;
   var img = document.getElementById('vmcImg');
 
   function handleTap(clientX, clientY) {
     var rect = img.getBoundingClientRect();
-    var xFrac = (clientX - rect.left) / rect.width;
-    var yFrac = (clientY - rect.top) / rect.height;
-    if (xFrac < 0 || xFrac > 1 || yFrac < 0 || yFrac > 1) return;
+    var xFracImg = (clientX - rect.left) / rect.width;
+    var yFracImg = (clientY - rect.top) / rect.height;
+    if (xFracImg < axLeft || xFracImg > axRight || yFracImg < axTop || yFracImg > axBottom) {
+      return; // タイトル・軸ラベル・凡例部分をクリックした場合は何もしない
+    }
+    var xFrac = (xFracImg - axLeft) / (axRight - axLeft);
+    var yFrac = (yFracImg - axTop) / (axBottom - axTop);
     var lon = lonMin + xFrac * (lonMax - lonMin);
     var lat = latMax - yFrac * (latMax - latMin);
 
