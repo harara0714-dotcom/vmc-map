@@ -67,6 +67,14 @@
     display:block; width:100%; height:auto; cursor: pointer;
     -webkit-tap-highlight-color: var(--accent-soft);
   }
+  .elev-tooltip {
+    position: absolute; pointer-events: none; z-index: 5;
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 11px; font-size: 0.8rem; font-weight:600;
+    white-space: nowrap; box-shadow: var(--shadow); opacity: 0;
+    transform: translate(14px, -130%); transition: opacity 0.1s;
+  }
+  .elev-tooltip.visible { opacity: 1; }
   .hint { font-size: 0.85rem; color: var(--text-muted); margin:0; }
   .sources { display:flex; flex-direction:column; gap:10px; }
   .source-links { display:flex; flex-wrap:wrap; gap:8px; }
@@ -101,8 +109,9 @@
   <div class="layer-tabs"><button type="button" class="layer-tab active" data-layer="0">VMCマップ</button><button type="button" class="layer-tab" data-layer="1">標高マップ</button></div>
 
   <div class="map-card">
-    <div class="map-container">
+    <div class="map-container" id="mapContainer">
       <img id="vmcImg" src="vmc_map.png" alt="VMCマップ">
+      <div id="elevTooltip" class="elev-tooltip"></div>
     </div>
   </div>
   <p id="elevInfo" class="hint">地図にカーソルを合わせる(スマホは指でなぞる)と、その地点の標高が表示されます。</p>
@@ -128,8 +137,10 @@
   var latMin = 24.0, latMax = 46.0;
   var maxDist = 0.3 * 0.8;
   var img = document.getElementById('vmcImg');
+  var mapContainer = document.getElementById('mapContainer');
   var elevInfo = document.getElementById('elevInfo');
   var elevInfoDefault = elevInfo.textContent;
+  var elevTooltip = document.getElementById('elevTooltip');
   var statusLegend = document.getElementById('statusLegend');
 
   function pixelToLatLon(clientX, clientY) {
@@ -159,6 +170,7 @@
       tabs[i].classList.toggle('active', i === index);
     }
     elevInfo.textContent = elevInfoDefault;
+    elevTooltip.classList.remove('visible');
   }
 
   var tabButtons = document.querySelectorAll('.layer-tab');
@@ -189,13 +201,31 @@
 
   function showElevation(clientX, clientY) {
     var ll = pixelToLatLon(clientX, clientY);
-    if (!ll) { elevInfo.textContent = elevInfoDefault; return; }
+    if (!ll) {
+      elevInfo.textContent = elevInfoDefault;
+      elevTooltip.classList.remove('visible');
+      return;
+    }
     var r = findNearest(elevationPoints, ll.lat, ll.lon);
+    var text;
     if (r.point && r.dist <= maxDist) {
+      text = "標高 " + r.point[2] + " ft";
       elevInfo.textContent = "標高: " + r.point[2] + " ft  (緯度" + ll.lat.toFixed(2) + " / 経度" + ll.lon.toFixed(2) + ")";
     } else {
-      elevInfo.textContent = "標高: 海上/データなし";
+      text = "標高: 海上/データなし";
+      elevInfo.textContent = text;
     }
+    var rect = mapContainer.getBoundingClientRect();
+    var left = clientX - rect.left;
+    var top = clientY - rect.top;
+    // ツールチップが右端・上端からはみ出さないよう反転させる
+    var flipX = left > rect.width - 120;
+    var flipY = top < 60;
+    elevTooltip.style.left = left + 'px';
+    elevTooltip.style.top = top + 'px';
+    elevTooltip.style.transform = "translate(" + (flipX ? "-100%" : "14px") + ", " + (flipY ? "20px" : "-130%") + ")";
+    elevTooltip.textContent = text;
+    elevTooltip.classList.add('visible');
   }
 
   img.addEventListener('click', function(e) {
@@ -206,6 +236,7 @@
   });
   img.addEventListener('mouseleave', function() {
     elevInfo.textContent = elevInfoDefault;
+    elevTooltip.classList.remove('visible');
   });
   img.addEventListener('touchstart', function(e) {
     var t = e.touches[0];
