@@ -1,0 +1,5 @@
+pipeline/cache/
+pipeline/output/
+pipeline/__pycache__/
+pipeline/*.pyc
+_site/

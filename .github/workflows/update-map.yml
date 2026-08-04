@@ -1,0 +1,66 @@
+name: Update VMC Map
+
+on:
+  schedule:
+    # 毎時0分、06:00-18:00 JST (= 21:00-09:00 UTC、日付をまたぐので2レンジに分割)
+    - cron: "0 21-23,0-9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies (tesseract OCR)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+
+      - name: Install Python dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Restore currently published site (so a partial run never regresses already-live content)
+        run: |
+          mkdir -p _site
+          BASE_URL="https://harara0714-dotcom.github.io/vmc-map"
+          for f in index.html vmc_map.png elevation_map.png gsi_relief_map.png \
+                   gsi_relief_sigwx_ft03.png gsi_relief_sigwx_ft06.png gsi_relief_sigwx_ft09.png \
+                   fbjp_reference.png theta_e_850hpa.png; do
+            curl -sf -o "_site/$f" "$BASE_URL/$f" || true
+          done
+          for dir in low_level_sigwx low_level_sigwx_ft06 low_level_sigwx_ft09; do
+            mkdir -p "_site/$dir"
+            for area in fbsp fbsn fbtk fbos fbkg fbok; do
+              curl -sf -o "_site/$dir/$area.png" "$BASE_URL/$dir/$area.png" || true
+            done
+          done
+
+      - name: Run VMC map pipeline
+        working-directory: pipeline
+        env:
+          VMC_TESSERACT_CMD: /usr/bin/tesseract
+          VMC_CI_SITE_DIR: ${{ github.workspace }}/_site
+        run: python main.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
