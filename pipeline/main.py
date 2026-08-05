@@ -199,6 +199,24 @@ def main():
     except Exception as e:
         print(f"  取得失敗 (スキップ): {e}")
 
+    # FT03の有効時刻から初期時刻(ベースタイム)を逆算する。各FTの有効時刻は
+    # 「初期時刻+FT時間」で一致するはずなので、FT06/09用に別途OCRし直す必要はない。
+    sigwx_base_time_dt = None
+    if sigwx_valid_time:
+        try:
+            sigwx_base_time_dt = datetime.strptime(
+                sigwx_valid_time, "%H%M UTC %d %b %Y"
+            ) - timedelta(hours=int(config.LOW_LEVEL_SIGWX_FT))
+        except ValueError as e:
+            print(f"  下層悪天予想図の初期時刻の算出に失敗 (スキップ): {e}")
+
+    def _sigwx_ft_caption(ft):
+        if sigwx_base_time_dt is None:
+            return None
+        valid_dt = sigwx_base_time_dt + timedelta(hours=int(ft))
+        fmt = "%H%M UTC %d %b %Y"
+        return f"初期時刻 {sigwx_base_time_dt.strftime(fmt)} / 有効時刻 {valid_dt.strftime(fmt)}"
+
     if gsi_relief_base is not None:
         print("下層悪天予想図をFT別に色別標高図へ重ね合わせ中...")
         sigwx_paths_by_ft = {"03": calibrated_paths}
@@ -230,6 +248,7 @@ def main():
                         "filename": os.path.basename(combo_path),
                         "axes_frac": gsi_relief_axes_frac,
                         "mercator": gsi_relief_mercator,
+                        "caption": _sigwx_ft_caption(ft),
                     }
                 )
                 print(f"  保存: {combo_path}")

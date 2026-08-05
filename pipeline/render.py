@@ -131,6 +131,8 @@ def _write_html_map(
         }
         if layer.get("mercator"):
             entry["mercator"] = layer["mercator"]
+        if layer.get("caption"):
+            entry["caption"] = layer["caption"]
         return entry
 
     layers_json = json.dumps([_layer_entry(layer) for layer in layers], ensure_ascii=False)
@@ -284,6 +286,7 @@ def _write_html_map(
   </div>
 
   <div class="layer-tabs">{layer_tabs}</div>
+  <p id="layerCaption" class="hint"></p>
 
   <div class="map-card">
     <div class="map-container" id="mapContainer">
@@ -319,6 +322,7 @@ def _write_html_map(
   var elevInfoDefault = elevInfo.textContent;
   var elevTooltip = document.getElementById('elevTooltip');
   var statusLegend = document.getElementById('statusLegend');
+  var layerCaption = document.getElementById('layerCaption');
 
   function pixelToLatLon(clientX, clientY) {{
     var layer = layers[currentLayer];
@@ -353,6 +357,7 @@ def _write_html_map(
     img.src = layers[index].filename;
     img.alt = layers[index].label;
     statusLegend.style.display = (index === 0) ? '' : 'none';
+    layerCaption.textContent = layers[index].caption || '';
     var tabs = document.querySelectorAll('.layer-tab');
     for (var i = 0; i < tabs.length; i++) {{
       tabs[i].classList.toggle('active', i === index);
