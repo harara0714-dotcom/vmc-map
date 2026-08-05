@@ -472,7 +472,7 @@ def _write_html_map(
         if (resp.status === 204) {{
           localStorage.setItem('vmcLastDispatch', String(Date.now()));
           refreshStatus.textContent = '更新をリクエストしました。3〜5分後にページを再読み込みしてください。';
-          updateCooldownUI();
+          setTimeout(updateCooldownUI, 5000);
         }} else {{
           refreshBtn.disabled = false;
           refreshStatus.textContent = 'リクエスト失敗 (' + resp.status + ')';
