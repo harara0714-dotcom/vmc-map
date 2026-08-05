@@ -148,12 +148,27 @@ def _write_html_map(
         else ""
     )
 
-    sigwx_source_links = "".join(
-        f'<a class="source-link" href="{config.sigwx_region_dirname(ft)}/{area}.png" '
-        f'target="_blank" rel="noopener">{name} FT{int(ft)}</a>'
+    sigwx_area_buttons = "".join(
+        f'<button type="button" class="source-link area-btn" data-area="{area}">{name}</button>'
         for area, name in config.LOW_LEVEL_SIGWX_AREAS.items()
-        for ft in config.LOW_LEVEL_SIGWX_FTS
     )
+    sigwx_areas_json = json.dumps(
+        {
+            area: {
+                "name": name,
+                "fts": [
+                    {
+                        "ft": str(int(ft)),
+                        "filename": f"{config.sigwx_region_dirname(ft)}/{area}.png",
+                    }
+                    for ft in config.LOW_LEVEL_SIGWX_FTS
+                ],
+            }
+            for area, name in config.LOW_LEVEL_SIGWX_AREAS.items()
+        },
+        ensure_ascii=False,
+    )
+    sigwx_source_links = sigwx_area_buttons
     sigwx_source_links += (
         '<a class="source-link" href="fbjp_reference.png" target="_blank" rel="noopener">'
         "全国(FBJP)</a>"
@@ -254,11 +269,17 @@ def _write_html_map(
   .sources {{ display:flex; flex-direction:column; gap:10px; }}
   .source-links {{ display:flex; flex-wrap:wrap; gap:8px; }}
   .source-link {{
-    font-size: 0.82rem; color: var(--accent); background: var(--accent-soft);
+    font: inherit; font-size: 0.82rem; color: var(--accent); background: var(--accent-soft);
     border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px;
-    text-decoration: none; transition: background 0.15s, color 0.15s;
+    text-decoration: none; cursor: pointer; -webkit-appearance: none; appearance: none;
+    transition: background 0.15s, color 0.15s;
   }}
   .source-link:hover, .source-link:focus-visible {{ background: var(--accent); color: var(--surface); }}
+  .area-btn.active {{ background: var(--accent); color: var(--surface); font-weight:600; }}
+  .sigwx-area-panel {{ display:flex; flex-direction:column; gap:14px; }}
+  .sigwx-area-panel .sigwx-item {{ display:flex; flex-direction:column; gap:6px; }}
+  .sigwx-area-panel .sigwx-item-label {{ font-size:0.8rem; color:var(--text-muted); font-weight:600; }}
+  .sigwx-area-panel img {{ width:100%; height:auto; border-radius:8px; border:1px solid var(--border); display:block; }}
   footer.notes {{ border-top: 1px solid var(--border); padding-top:18px; font-size:0.8rem; color:var(--text-muted); display:flex; flex-direction:column; gap:7px; }}
   footer.notes strong {{ color: var(--text); }}
 </style>
@@ -298,8 +319,9 @@ def _write_html_map(
   <p class="hint">地図をタップ/クリックすると、一番近い地点の都道府県のウェザーニューズ・ライブカメラ一覧が別タブで開きます。</p>
 
   <div class="sources">
-    <p class="hint">気象庁 下層悪天予想図(原本)を見る:</p>
+    <p class="hint">気象庁 下層悪天予想図(原本)を見る(地域を選ぶとFT3/FT6/FT9をまとめて表示):</p>
     <div class="source-links">{sigwx_source_links}</div>
+    <div id="sigwxAreaPanel" class="sigwx-area-panel"></div>
   </div>
 
   <footer class="notes">
@@ -311,6 +333,7 @@ def _write_html_map(
 (function() {{
   var livecamPoints = {points_json};
   var elevationPoints = {elevation_points_json};
+  var sigwxAreas = {sigwx_areas_json};
   var layers = {layers_json};
   var currentLayer = 0;
   var lonMin = {config.LON_MIN}, lonMax = {config.LON_MAX};
@@ -370,6 +393,34 @@ def _write_html_map(
   for (var t = 0; t < tabButtons.length; t++) {{
     tabButtons[t].addEventListener('click', function() {{
       selectLayer(parseInt(this.getAttribute('data-layer'), 10));
+    }});
+  }}
+
+  var sigwxAreaPanel = document.getElementById('sigwxAreaPanel');
+  var areaButtons = document.querySelectorAll('.area-btn');
+  var activeArea = null;
+  for (var a = 0; a < areaButtons.length; a++) {{
+    areaButtons[a].addEventListener('click', function() {{
+      var area = this.getAttribute('data-area');
+      for (var i = 0; i < areaButtons.length; i++) {{
+        areaButtons[i].classList.remove('active');
+      }}
+      if (activeArea === area) {{
+        activeArea = null;
+        sigwxAreaPanel.innerHTML = '';
+        return;
+      }}
+      activeArea = area;
+      this.classList.add('active');
+      var info = sigwxAreas[area];
+      var html = '';
+      for (var j = 0; j < info.fts.length; j++) {{
+        var item = info.fts[j];
+        html += '<div class="sigwx-item"><div class="sigwx-item-label">' + info.name +
+          ' FT' + item.ft + '</div><img src="' + item.filename + '" alt="' + info.name +
+          ' FT' + item.ft + '" loading="lazy"></div>';
+      }}
+      sigwxAreaPanel.innerHTML = html;
     }});
   }}
 
