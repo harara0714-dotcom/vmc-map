@@ -54,6 +54,7 @@ jobs:
         env:
           VMC_TESSERACT_CMD: /usr/bin/tesseract
           VMC_CI_SITE_DIR: ${{ github.workspace }}/_site
+          VMC_DISPATCH_TOKEN: ${{ secrets.VMC_DISPATCH_TOKEN }}
         run: python main.py
 
       - name: Upload Pages artifact

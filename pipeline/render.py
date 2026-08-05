@@ -216,6 +216,14 @@ def _write_html_map(
   }}
   .chip b {{ font-weight:600; color: var(--text); font-family: inherit; }}
   .legend {{ display:flex; flex-wrap:wrap; gap:18px; align-items:center; font-size:0.85rem; color:var(--text-muted); }}
+  .refresh-row {{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }}
+  .refresh-btn {{
+    font: inherit; font-size: 0.85rem; font-weight:600; color: var(--surface);
+    background: var(--accent); border: 1px solid var(--accent); border-radius: 8px;
+    padding: 9px 16px; cursor: pointer; transition: opacity 0.15s;
+  }}
+  .refresh-btn:hover {{ opacity: 0.88; }}
+  .refresh-btn:disabled {{ opacity: 0.5; cursor: default; }}
   .legend .item {{ display:flex; align-items:center; gap:7px; }}
   .swatch {{ width:14px; height:14px; border-radius:3px; display:inline-block; flex:none; }}
   .layer-tabs {{ display:flex; flex-wrap:wrap; gap:8px; }}
@@ -262,6 +270,10 @@ def _write_html_map(
     <div class="chips">
       <span class="chip">気象予報 対象時刻 <b>{valid_time_str} UTC</b></span>
       {sigwx_chip}
+    </div>
+    <div class="refresh-row">
+      <button type="button" id="refreshBtn" class="refresh-btn">今すぐ最新データを取得</button>
+      <span id="refreshStatus" class="hint"></span>
     </div>
   </header>
 
@@ -422,6 +434,55 @@ def _write_html_map(
     var t = e.touches[0];
     showElevation(t.clientX, t.clientY);
   }}, {{ passive: true }});
+
+  var dispatchToken = "{config.GH_DISPATCH_TOKEN}";
+  var refreshBtn = document.getElementById('refreshBtn');
+  var refreshStatus = document.getElementById('refreshStatus');
+  var COOLDOWN_MS = 5 * 60 * 1000;
+
+  function updateCooldownUI() {{
+    var last = parseInt(localStorage.getItem('vmcLastDispatch') || '0', 10);
+    var remain = COOLDOWN_MS - (Date.now() - last);
+    if (remain > 0) {{
+      refreshBtn.disabled = true;
+      refreshStatus.textContent = 'リクエスト送信済み。しばらくお待ちください(あと約' + Math.ceil(remain / 60000) + '分)';
+      setTimeout(updateCooldownUI, 15000);
+    }} else {{
+      refreshBtn.disabled = false;
+      refreshStatus.textContent = '';
+    }}
+  }}
+
+  if (!dispatchToken) {{
+    refreshBtn.style.display = 'none';
+  }} else {{
+    updateCooldownUI();
+    refreshBtn.addEventListener('click', function() {{
+      refreshBtn.disabled = true;
+      refreshStatus.textContent = 'リクエスト送信中...';
+      fetch('https://api.github.com/repos/{config.GH_ACTIONS_REPO}/actions/workflows/{config.GH_ACTIONS_WORKFLOW}/dispatches', {{
+        method: 'POST',
+        headers: {{
+          'Authorization': 'Bearer ' + dispatchToken,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }},
+        body: JSON.stringify({{ref: 'main'}})
+      }}).then(function(resp) {{
+        if (resp.status === 204) {{
+          localStorage.setItem('vmcLastDispatch', String(Date.now()));
+          refreshStatus.textContent = '更新をリクエストしました。3〜5分後にページを再読み込みしてください。';
+          updateCooldownUI();
+        }} else {{
+          refreshBtn.disabled = false;
+          refreshStatus.textContent = 'リクエスト失敗 (' + resp.status + ')';
+        }}
+      }}).catch(function() {{
+        refreshBtn.disabled = false;
+        refreshStatus.textContent = '通信エラーが発生しました';
+      }});
+    }});
+  }}
 }})();
 </script>
 </body>

@@ -206,6 +206,13 @@ GH_PAGES_REMOTE = "origin"
 GH_PAGES_BRANCH = "main"
 GH_PAGES_URL = "https://harara0714-dotcom.github.io/vmc-map/"
 
+# --- ページ上の「更新」ボタン用 (GitHub Actionsのworkflow_dispatchをブラウザから直接叩く) ---
+# 埋め込むトークンは「このリポジトリのActions: Read and writeのみ」に絞った
+# fine-grained PATを想定(ページ上で誰でも見える前提なので、他の権限は一切持たせないこと)。
+GH_ACTIONS_REPO = "harara0714-dotcom/vmc-map"
+GH_ACTIONS_WORKFLOW = "update-map.yml"
+GH_DISPATCH_TOKEN = os.environ.get("VMC_DISPATCH_TOKEN", "")
+
 OUTPUT_RETENTION_DAYS = 7  # これより古いoutput/配下のフォルダは実行時に自動削除
 
 HTTP_TIMEOUT_SEC = 30
